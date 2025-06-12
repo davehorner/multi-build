@@ -612,6 +612,8 @@ async function connectWebSocket() {
         console.log(`${logTag} Sync message received:`, message.data);
         await handleSyncData(message.data);
       } else if (message.type === "update-and-install") {
+        // Show notification when update/install message is received
+        vscode.window.showInformationMessage("Multi-Build: Received update/install command from room. Running update...");
         // Only run update/install if this is the multi-build repo
         const pkg = require(path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', "package.json"));
         if (pkg.name === "multi-build") {
