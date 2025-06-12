@@ -11,6 +11,7 @@ const serverConfigKey = "multiBuild.server";
 const syncDataConfigKey = "multiBuild.syncData";
 const reconnectCommand = `multiBuild.reconnect`;
 const syncCommand = `multiBuild.sync`;
+const showRoomIdCommand = "multiBuild.showRoomId";
 const defaultBaseUrl = "wss://multi-build-server.symless.workers.dev";
 const keepAliveIntervalMillis = 10000; // 10 seconds
 
@@ -45,6 +46,26 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }),
   );
+
+  // Register command to show and edit the current room ID
+  context.subscriptions.push(
+    vscode.commands.registerCommand(showRoomIdCommand, async () => {
+      const config = vscode.workspace.getConfiguration(serverConfigKey);
+      let currentRoomId = config.get<string>("roomId") || "";
+      const newRoomId = await vscode.window.showInputBox({
+        prompt: "View or edit the current Multi-Build room ID",
+        placeHolder: "room-id",
+        value: currentRoomId,
+        ignoreFocusOut: true,
+      });
+      if (newRoomId && newRoomId !== currentRoomId) {
+        await vscode.workspace.getConfiguration().update(serverConfigKey, { ...config, roomId: newRoomId }, true);
+        vscode.window.showInformationMessage(`${extensionName}: Room ID updated to ${newRoomId}`);
+      } else if (newRoomId === currentRoomId) {
+        vscode.window.showInformationMessage(`${extensionName}: Room ID unchanged.`);
+      }
+    }),
+  );
 }
 
 export function deactivate() {
@@ -69,23 +90,31 @@ async function init() {
     vscode.window.showErrorMessage(`${extensionName}: No server config found`);
     return;
   }
-
-  const { baseUrl } = existingServerConfig;
+  let { baseUrl, roomId } = existingServerConfig;
 
   if (!baseUrl) {
     vscode.window.showErrorMessage(`${extensionName}: No server base URL found`);
     return;
   }
 
-  var roomId: string;
-  const { roomId: existingRoomId } = existingServerConfig;
-  if (existingRoomId) {
-    console.log(`${logTag} Using existing room ID: ${existingRoomId}`);
-    roomId = existingRoomId;
+  if (!roomId) {
+    // Prompt the user for a room ID
+    roomId = await vscode.window.showInputBox({
+      prompt: "Enter a room ID for Multi-Build sync (or leave blank to generate one)",
+      placeHolder: "room-id",
+      value: "",
+      ignoreFocusOut: true,
+    });
+    if (!roomId) {
+      // If user leaves blank, generate a new one
+      roomId = randomUUID();
+      vscode.window.showInformationMessage(`${extensionName}: Generated new room ID: ${roomId}`);
+    } else {
+      vscode.window.showInformationMessage(`${extensionName}: Using entered room ID: ${roomId}`);
+    }
+    await vscode.workspace.getConfiguration().update(serverConfigKey, { roomId, baseUrl }, true);
   } else {
-    roomId = randomUUID();
-    console.log(`${logTag} Saving new room ID: ${existingRoomId}`);
-    await vscode.workspace.getConfiguration().update(serverConfigKey, { roomId }, true);
+    console.log(`${logTag} Using existing room ID: ${roomId}`);
   }
 
   console.log(`${logTag} Watching for config changes`);
