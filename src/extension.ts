@@ -273,7 +273,8 @@ async function pushRepoSettings() {
   const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
   let manifestPath: string | undefined = undefined;
   let target: string | undefined = undefined;
-  if (cargoFiles.length > 0) {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (cargoFiles.length > 0 && workspaceFolder) {
     const selectedFile = await vscode.window.showQuickPick(
       cargoFiles.map((file) => ({
         label: path.basename(file.fsPath),
@@ -288,8 +289,9 @@ async function pushRepoSettings() {
       vscode.window.showErrorMessage(`${extensionName}: No file selected.`);
       return;
     }
-    manifestPath = selectedFile.filePath;
-    const selectedTarget = await listCargoETargets(manifestPath).catch((error) => {
+    // Store manifestPath as relative to workspace root
+    manifestPath = path.relative(workspaceFolder, selectedFile.filePath);
+    const selectedTarget = await listCargoETargets(selectedFile.filePath).catch((error) => {
       vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
       return null;
     });
@@ -368,8 +370,9 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   // Check if Cargo.toml exists in the repo root
   const git = getGitAPI();
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
-  if (repoObj) {
-    let selectedFilePath = manifestPath;
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (repoObj && workspaceFolder) {
+    let selectedFilePath = manifestPath ? path.join(workspaceFolder, ...manifestPath.split(/[\\\/]/)) : undefined;
     let targetName = target;
     if (!selectedFilePath) {
       const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
