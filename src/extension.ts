@@ -313,8 +313,8 @@ function sendMessage({ type, data }: { type: string; data?: unknown }) {
   roomSocket.send(JSON.stringify({ type, data }));
 }
 
-async function handleSyncData(data: { repo: string; remote: string; branch: string }) {
-  const { repo, remote, branch } = data;
+async function handleSyncData(data: { repo: string; remote: string; branch: string; manifestPath?: string; target?: string }) {
+  const { repo, remote, branch, manifestPath, target } = data;
   if (!repo || !remote || !branch) {
     console.error(`${logTag} Invalid sync message:`, data);
     vscode.window.showErrorMessage(`${extensionName}: Invalid sync message`);
@@ -336,54 +336,61 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   const git = getGitAPI();
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
   if (repoObj) {
-    const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
-    console.debug(`${logTag} Found Cargo.toml files:`, cargoFiles.map(f => f.fsPath));
-    if (cargoFiles.length === 0) {
-      vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml files found in the workspace.`);
-      return;
+    let selectedFilePath = manifestPath;
+    let targetName = target;
+    if (!selectedFilePath) {
+      const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
+      console.debug(`${logTag} Found Cargo.toml files:`, cargoFiles.map(f => f.fsPath));
+      if (cargoFiles.length === 0) {
+        vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml files found in the workspace.`);
+        return;
+      }
+      const selectedFile = await vscode.window.showQuickPick(
+        cargoFiles.map((file) => ({
+          label: path.basename(file.fsPath),
+          description: file.fsPath,
+          filePath: file.fsPath,
+        })),
+        {
+          placeHolder: "Select a Cargo.toml file",
+        },
+      );
+      if (!selectedFile) {
+        vscode.window.showErrorMessage(`${extensionName}: No file selected.`);
+        return;
+      }
+      selectedFilePath = selectedFile.filePath;
+      // Prompt for target if not provided
+      const selectedTarget = await listCargoETargets(selectedFilePath).catch((error) => {
+        vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
+        return null;
+      });
+      if (!selectedTarget) {
+        console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
+      }
+      targetName = selectedTarget ? selectedTarget.label : undefined;
+      // Send WebSocket message to synchronize with other systems
+      sendMessage({
+        type: "cargo-e",
+        data: {
+          repo,
+          remote,
+          branch,
+          manifestPath: selectedFilePath,
+          target: targetName,
+        },
+      });
     }
-
-    const selectedFile = await vscode.window.showQuickPick(
-      cargoFiles.map((file) => ({
-        label: path.basename(file.fsPath),
-        description: file.fsPath,
-        filePath: file.fsPath,
-      })),
-      {
-        placeHolder: "Select a Cargo.toml file",
-      },
-    );
-
-    if (!selectedFile) {
-      vscode.window.showErrorMessage(`${extensionName}: No file selected.`);
-      return;
-    }
-    const selectedTarget = await listCargoETargets(selectedFile.filePath).catch((error) => {
-      vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
-      return null;
-    });
-    if (!selectedTarget) {
-      console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
-    }
-    const selectedDir = path.dirname(selectedFile.filePath);
-    console.log(`${cargoLogTag} Found Cargo.toml, running 'cargo-e' in ${selectedDir}`);
+    // Run cargo-e with the selected or received manifestPath and target
+    const selectedDir = path.dirname(selectedFilePath);
+    console.log(`${cargoLogTag} Using Cargo.toml, running 'cargo-e' in ${selectedDir}`);
     const terminal = vscode.window.createTerminal({
       name: "Cargo Build",
       cwd: selectedDir,
     });
     terminal.show();
-    const targetName = selectedTarget ? selectedTarget.label : undefined;
-    const cargoCommand = targetName ? `cargo-e --manifest-path ${selectedFile.filePath} --target ${targetName}` : `cargo-e --manifest-path ${selectedFile.filePath}`;
+    const cargoCommand = targetName ? `cargo-e --manifest-path ${selectedFilePath} --target ${targetName}` : `cargo-e --manifest-path ${selectedFilePath}`;
     terminal.sendText(cargoCommand);
-
-    // Send WebSocket message to synchronize with other systems
-    sendMessage({
-      type: "cargo-e",
-      data: {
-        manifestPath: selectedFile.filePath,
-        target: targetName,
-      },
-    });
     return;
   }
 
