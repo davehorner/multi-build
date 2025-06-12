@@ -611,6 +611,7 @@ async function connectWebSocket() {
   roomSocket.on("open", () => {
     assert(roomSocket);
     console.log(`${logTag} WebSocket connection opened`);
+    vscode.window.showInformationMessage(`${logTag} WebSocket connection opened`);
     sendMessage({ type: "hello" });
     keepAlive = setInterval(() => sendMessage({ type: "keep-alive" }), keepAliveIntervalMillis);
   });
@@ -618,7 +619,9 @@ async function connectWebSocket() {
   roomSocket.on("message", async (data) => {
     try {
       assert(roomSocket);
-      console.debug(`${logTag} WebSocket message received:`, data.toString());
+      // DEBUG: Notify and log on every message received
+      vscode.window.showInformationMessage("Multi-Build: WebSocket message received");
+      console.debug(`${logTag} WebSocket message received (raw):`, data.toString());
       const message = JSON.parse(data.toString());
       if (message.type === "hello") {
         console.log(`${logTag} Hello back message received`);
