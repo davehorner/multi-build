@@ -3,7 +3,7 @@
   "displayName": "Multi-Build",
   "publisher": "symless",
   "description": "Switch all machines to the same Git branch and then builds",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "engines": {
     "vscode": "^1.99.0"
   },
@@ -27,6 +27,14 @@
       {
         "command": "multiBuild.showRoomId",
         "title": "Multi-Build: Show/Edit Room ID"
+      },
+      {
+        "command": "multiBuild.updateAndInstall",
+        "title": "Multi-Build: Update, Package, and Install Extension"
+      },
+      {
+        "command": "multiBuild.broadcastUpdateAndInstall",
+        "title": "Multi-Build: Broadcast Update/Install to All Machines"
       }
     ],
     "configuration": {

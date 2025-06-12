@@ -13,6 +13,7 @@ const syncDataConfigKey = "multiBuild.syncData";
 const reconnectCommand = `multiBuild.reconnect`;
 const syncCommand = `multiBuild.sync`;
 const showRoomIdCommand = "multiBuild.showRoomId";
+const updateAndInstallCommand = "multiBuild.updateAndInstall";
 const defaultBaseUrl = "wss://multi-build-server.symless.workers.dev";
 const keepAliveIntervalMillis = 10000; // 10 seconds
 
@@ -69,6 +70,45 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`${extensionName}: Room ID unchanged.`);
       }
     }),
+  );
+
+  // Register command to update, package, and install the extension
+  context.subscriptions.push(
+    vscode.commands.registerCommand(updateAndInstallCommand, async () => {
+      try {
+        // Pull latest code
+        const terminal = vscode.window.createTerminal({ name: "Multi-Build Update" });
+        terminal.show();
+        terminal.sendText("git pull");
+        // Wait a bit for git pull to finish (not perfect, but simple)
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        // Run npm run package
+        terminal.sendText("npm run package");
+        // Wait a bit for packaging to finish
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        // Always use the version from package.json
+        const pkg = require(path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', "package.json"));
+        const vsixName = `multi-build-${pkg.version}.vsix`;
+        const vsixPath = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', vsixName);
+        const fs = require("fs");
+        if (!fs.existsSync(vsixPath)) {
+          vscode.window.showErrorMessage(`Multi-Build: ${vsixName} not found. Make sure packaging succeeded.`);
+          return;
+        }
+        // Install the correct VSIX
+        terminal.sendText(`code --install-extension ./${vsixName}`);
+        vscode.window.showInformationMessage(`Multi-Build: Pulled, packaged, and installed ${vsixName}`);
+      } catch (err) {
+        vscode.window.showErrorMessage(`Multi-Build: Update/install failed: ${err}`);
+      }
+    })
+  );
+  // Add a command to broadcast update-and-install to all machines
+  context.subscriptions.push(
+    vscode.commands.registerCommand("multiBuild.broadcastUpdateAndInstall", async () => {
+      sendMessage({ type: "update-and-install" });
+      vscode.window.showInformationMessage("Multi-Build: Sent update/install command to all machines in the room.");
+    })
   );
 }
 
@@ -372,7 +412,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (repoObj && workspaceFolder) {
-    let selectedFilePath = manifestPath ? path.join(workspaceFolder, ...manifestPath.split(/[\\\/]/)) : undefined;
+    let selectedFilePath = manifestPath ? path.resolve(workspaceFolder, ...manifestPath.split(/[\\\/]/)) : undefined;
     let targetName = target;
     if (!selectedFilePath) {
       const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
@@ -418,6 +458,8 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
       });
     }
     // Run cargo-e with the selected or received manifestPath and target
+    // Normalize to POSIX path for --manifest-path argument
+    const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
     const selectedDir = path.dirname(selectedFilePath);
     console.log(`${cargoLogTag} Using Cargo.toml, running 'cargo-e' in ${selectedDir}`);
     const terminal = vscode.window.createTerminal({
@@ -425,7 +467,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
       cwd: selectedDir,
     });
     terminal.show();
-    const cargoCommand = targetName ? `cargo-e --manifest-path ${selectedFilePath} --target ${targetName}` : `cargo-e --manifest-path ${selectedFilePath}`;
+    const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
     terminal.sendText(cargoCommand);
     return;
   }
@@ -569,6 +611,14 @@ async function connectWebSocket() {
       } else if (message.type === "sync") {
         console.log(`${logTag} Sync message received:`, message.data);
         await handleSyncData(message.data);
+      } else if (message.type === "update-and-install") {
+        // Only run update/install if this is the multi-build repo
+        const pkg = require(path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', "package.json"));
+        if (pkg.name === "multi-build") {
+          vscode.commands.executeCommand(updateAndInstallCommand);
+        } else {
+          vscode.window.showWarningMessage("Multi-Build: Ignored update/install command (not multi-build repo)");
+        }
       } else {
         console.error(`${logTag} Unknown message type: ${message.type}`);
         vscode.window.showErrorMessage(`${extensionName}: Unknown message type: ${message.type}`);
