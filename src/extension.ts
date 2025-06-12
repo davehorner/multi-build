@@ -82,17 +82,34 @@ export function activate(context: vscode.ExtensionContext) {
         terminal.sendText("git pull");
         // Wait a bit for git pull to finish (not perfect, but simple)
         await new Promise((resolve) => setTimeout(resolve, 3000));
-        // Run npm run package
-        terminal.sendText("npm run package");
-        // Wait a bit for packaging to finish
-        await new Promise((resolve) => setTimeout(resolve, 5000));
         // Always use the version from package.json
         const pkg = require(path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', "package.json"));
         const vsixName = `multi-build-${pkg.version}.vsix`;
         const vsixPath = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', vsixName);
         const fs = require("fs");
-        if (!fs.existsSync(vsixPath)) {
-          vscode.window.showErrorMessage(`Multi-Build: ${vsixName} not found. Make sure packaging succeeded.`);
+        // Get the current mtime (if file exists)
+        let prevMtime = 0;
+        if (fs.existsSync(vsixPath)) {
+          prevMtime = fs.statSync(vsixPath).mtime.getTime();
+        }
+        // Run npm run package
+        terminal.sendText("npm run package");
+        // Poll for the new .vsix file to be created/updated
+        const waitForVsix = async () => {
+          for (let i = 0; i < 30; ++i) { // up to ~15 seconds
+            if (fs.existsSync(vsixPath)) {
+              const mtime = fs.statSync(vsixPath).mtime.getTime();
+              if (mtime > prevMtime) {
+                return true;
+              }
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+          return false;
+        };
+        const found = await waitForVsix();
+        if (!found) {
+          vscode.window.showErrorMessage(`Multi-Build: ${vsixName} not found or not updated after packaging. Make sure packaging succeeded.`);
           return;
         }
         // Install the correct VSIX
