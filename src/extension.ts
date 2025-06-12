@@ -4,6 +4,9 @@ import { API as GitAPI, GitExtension } from "../typings/git";
 import WebSocket from "ws";
 import { randomUUID } from "crypto";
 import assert from "assert";
+import { exec } from "child_process";
+import { promisify } from "util";
+const execAsync = promisify(exec);
 
 const extensionName = "Multi-Build";
 const logTag = "[multi-build]";
@@ -76,25 +79,24 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(updateAndInstallCommand, async () => {
       try {
+        const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
         // Pull latest code
-        const terminal = vscode.window.createTerminal({ name: "Multi-Build Update" });
-        terminal.show();
-        terminal.sendText("git pull");
-        // Wait a bit for git pull to finish (not perfect, but simple)
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await execAsync("git pull", { cwd: workspacePath });
+
         // Always use the version from package.json
-        const pkg = require(path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', "package.json"));
+        const pkg = require(path.join(workspacePath, "package.json"));
         const vsixName = `multi-build-${pkg.version}.vsix`;
-        const vsixPath = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '', vsixName);
+        const vsixPath = path.join(workspacePath, vsixName);
         const fs = require("fs");
-        // Get the current mtime (if file exists)
         let prevMtime = 0;
         if (fs.existsSync(vsixPath)) {
           prevMtime = fs.statSync(vsixPath).mtime.getTime();
         }
-        // Run npm run package
-        terminal.sendText("npm run package");
-        // Poll for the new .vsix file to be created/updated
+
+        // Run npm run package and wait for it to finish
+        await execAsync("npm run package", { cwd: workspacePath });
+
+        // Wait for the new .vsix file to be created/updated
         const waitForVsix = async () => {
           for (let i = 0; i < 30; ++i) { // up to ~15 seconds
             if (fs.existsSync(vsixPath)) {
@@ -113,7 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
         // Install the correct VSIX
-        terminal.sendText(`code --install-extension ./${vsixName}`);
+        await execAsync(`code --install-extension ./${vsixName}`, { cwd: workspacePath });
         vscode.window.showInformationMessage(`Multi-Build: Pulled, packaged, and installed ${vsixName}`);
       } catch (err) {
         vscode.window.showErrorMessage(`Multi-Build: Update/install failed: ${err}`);
