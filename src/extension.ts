@@ -259,7 +259,6 @@ async function pushRepoSettings() {
   }
 
   // Always ask the branch name, as this is what changes most often.
-  // Copy pasting this from the PR isn't a big deal, and it's not often one we've used before.
   const branch = await vscode.window.showInputBox({
     prompt: "Enter the branch name",
     placeHolder: "hello-branch",
@@ -270,7 +269,41 @@ async function pushRepoSettings() {
     return;
   }
 
-  const data = { repo, remote, branch };
+  // Check for Cargo.toml files
+  const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
+  let manifestPath: string | undefined = undefined;
+  let target: string | undefined = undefined;
+  if (cargoFiles.length > 0) {
+    const selectedFile = await vscode.window.showQuickPick(
+      cargoFiles.map((file) => ({
+        label: path.basename(file.fsPath),
+        description: file.fsPath,
+        filePath: file.fsPath,
+      })),
+      {
+        placeHolder: "Select a Cargo.toml file",
+      },
+    );
+    if (!selectedFile) {
+      vscode.window.showErrorMessage(`${extensionName}: No file selected.`);
+      return;
+    }
+    manifestPath = selectedFile.filePath;
+    const selectedTarget = await listCargoETargets(manifestPath).catch((error) => {
+      vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
+      return null;
+    });
+    if (!selectedTarget) {
+      console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
+    }
+    target = selectedTarget ? selectedTarget.label : undefined;
+  }
+
+  // Only include manifestPath/target if a Cargo.toml was selected, otherwise don't include them (for CMake-only projects)
+  const data: any = { repo, remote, branch };
+  if (manifestPath) { data.manifestPath = manifestPath; }
+  if (target) { data.target = target; }
+
   console.log(`${logTag} Saving changes to config:`, data);
   await vscode.workspace.getConfiguration().update(syncDataConfigKey, data, true);
 
