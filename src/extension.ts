@@ -481,7 +481,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     vscode.window.showErrorMessage(`${extensionName}: Invalid sync message`);
     return;
   }
-
+  try {
   const git = getGitAPI();
   const currentRepoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
   if (!currentRepoObj) {
@@ -496,7 +496,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     vscode.window.showErrorMessage(`${extensionName}: Failed to checkout branch '${branch}' in repository '${repo}'.`);
     return;
   }
-  await vscode.window.showInformationMessage(`${extensionName}: Synced to branch '${branch}' in repository '${repo}'.`);
+  vscode.window.showInformationMessage(`${extensionName}: Synced to branch '${branch}' in repository '${repo}'.`);
   // Check if Cargo.toml exists in the repo root
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -703,6 +703,10 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     }
     vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml, CMakeLists.txt, or VS Code extension (package.json with engines.vscode) found in the workspace.`);
   }
+    } catch (error) {
+    console.error(`${logTag} Error handling synced message:`, error);
+    vscode.window.showErrorMessage(`${extensionName}: Error handling synced message: ${error}`);
+  }
 }
 
 // Add logic to run `cargo-e --json-all-targets` and list targets
@@ -751,7 +755,8 @@ async function listCargoETargets(manifestPath: string): Promise<{ label: string;
       description: target.kind || "",
       detail: target.manifest_path || "",
     }));
-
+    // Sort targets alphabetically by label
+    targetOptions.sort((a, b) => a.label.localeCompare(b.label));
     console.log(`${cargoLogTag} Target options for Quick Pick:`, targetOptions);
 
     // Show the targets in a Quick Pick menu
@@ -831,7 +836,7 @@ async function connectWebSocket() {
       if (message.type === "hello") {
         console.log(`${logTag} Hello back message received`);
       } else if (message.type === "ack") {
-        console.debug(`${logTag} Ack message received`);
+        //console.debug(`${logTag} Ack message received`);
       } else if (message.type === "error") {
         console.error(`${logTag} Error message received: ${message.message}`);
         vscode.window.showErrorMessage(`${extensionName}: ${message.message}`);
