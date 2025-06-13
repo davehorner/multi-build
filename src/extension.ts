@@ -481,6 +481,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   const checkoutResult = await checkoutBranch(repo, remote, branch);
   if (!checkoutResult) {
     console.warn(`${logTag} Checkout failed, skipping build`);
+    vscode.window.showErrorMessage(`${extensionName}: Failed to checkout branch '${branch}' in repository '${repo}'.`);
     return;
   }
 
@@ -567,6 +568,9 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
         vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
       }
     }
+  } else {
+    console.warn(`${logTag} No Git repository found for workspace, skipping Cargo build.`);
+    vscode.window.showWarningMessage(`${extensionName}: No Git repository found for workspace, skipping Cargo build.`);
   }
 
   // Check if CMakeLists.txt exists in the repo root
