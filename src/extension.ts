@@ -500,7 +500,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     let targetName = target;
     if (manifestPath && targetName) {
       await vscode.window.showInformationMessage(
-        `${extensionName}: Using Cargo manifest: ${manifestPath}, target: ${targetName}`
+        `${extensionName}: Using Cargo manifest: ${manifestPath}, target: ${targetName} selectedPath: ${selectedFilePath}`
       );
     } else if (manifestPath) {
       await vscode.window.showInformationMessage(
@@ -583,6 +583,22 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
       } else {
         await vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
       }
+    } else {
+      const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
+      const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
+      console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+
+      const terminal = vscode.window.createTerminal({
+        name: targetName ? `${targetName}` : "Cargo Build",
+        cwd: selectedDir,
+      });
+      terminal.show();
+
+      const cargoCommand = targetName
+        ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}`
+        : `cargo-e --manifest-path "${posixManifestPath}"`;
+      console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+      terminal.sendText(cargoCommand);
     }
   } else {
     console.warn(`${logTag} No Git repository found for workspace, skipping Cargo build.`);
