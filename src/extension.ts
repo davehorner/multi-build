@@ -455,43 +455,47 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     if (!selectedFilePath) {
       const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
       console.debug(`${logTag} Found Cargo.toml files:`, cargoFiles.map(f => f.fsPath));
-      const selectedFile = await vscode.window.showQuickPick(
-        cargoFiles.map((file) => ({
-          label: path.basename(file.fsPath),
-          description: file.fsPath,
-          filePath: file.fsPath,
-        })),
-        {
-          placeHolder: "Select a Cargo.toml file",
-        },
-      );
-      if (!selectedFile) {
-        vscode.window.showErrorMessage(`${extensionName}: No file selected.`);
-        return;
+      let selectedFile: { label: string; description: string; filePath: string } | undefined = undefined;
+      if (cargoFiles.length > 0) {
+        selectedFile = await vscode.window.showQuickPick(
+          cargoFiles.map((file) => ({
+        label: path.basename(file.fsPath),
+        description: file.fsPath,
+        filePath: file.fsPath,
+          })),
+          {
+        placeHolder: "Select a Cargo.toml file",
+          },
+        );
+        if (!selectedFile) {
+          // User cancelled selection, silently continue to CMake/package.json handling
+        }
+      } else {
+        // No Cargo.toml files found, silently continue to CMake/package.json handling
       }
-      selectedFilePath = selectedFile.filePath;
-      // Prompt for target if not provided
-      const selectedTarget = await listCargoETargets(selectedFilePath).catch((error) => {
-        vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
-        return null;
-      });
-      if (!selectedTarget) {
-        console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
-      }
-      targetName = selectedTarget ? selectedTarget.label : undefined;
-      // Send WebSocket message to synchronize with other systems
-      sendMessage({
-        type: "cargo-e",
-        data: {
-          repo,
-          remote,
-          branch,
-          manifestPath: selectedFilePath,
-          target: targetName,
-        },
-      });
-    }
-    // Run cargo-e with the selected or received manifestPath and target
+      if (selectedFile) {
+        selectedFilePath = selectedFile.filePath;
+        // Prompt for target if not provided
+        const selectedTarget = await listCargoETargets(selectedFilePath).catch((error) => {
+          vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
+          return null;
+        });
+        if (!selectedTarget) {
+          console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
+        }
+        targetName = selectedTarget ? selectedTarget.label : undefined;
+        // Send WebSocket message to synchronize with other systems
+        sendMessage({
+          type: "cargo-e",
+          data: {
+            repo,
+            remote,
+            branch,
+            manifestPath: selectedFilePath,
+            target: targetName,
+          },
+        });
+            // Run cargo-e with the selected or received manifestPath and target
     // Normalize to POSIX path for --manifest-path argument
     const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
     const selectedDir = path.dirname(selectedFilePath);
@@ -503,7 +507,8 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     terminal.show();
     const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
     terminal.sendText(cargoCommand);
-    return;
+      }
+    }
   }
 
   // Check if CMakeLists.txt exists in the repo root
