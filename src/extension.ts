@@ -485,7 +485,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     vscode.window.showErrorMessage(`${extensionName}: Failed to checkout branch '${branch}' in repository '${repo}'.`);
     return;
   }
-  vscode.window.showInformationMessage(`${extensionName}: Synced to branch '${branch}' in repository '${repo}'.`);
+  await vscode.window.showInformationMessage(`${extensionName}: Synced to branch '${branch}' in repository '${repo}'.`);
   // Check if Cargo.toml exists in the repo root
   const git = getGitAPI();
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
