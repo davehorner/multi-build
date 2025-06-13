@@ -539,14 +539,17 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
             // Run cargo-e with the selected or received manifestPath and target
     // Normalize to POSIX path for --manifest-path argument
     const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
-    const selectedDir = path.dirname(selectedFilePath);
-    console.log(`${cargoLogTag} Using Cargo.toml, running 'cargo-e' in ${selectedDir}`);
+    const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
+    console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+    
     const terminal = vscode.window.createTerminal({
-      name: "Cargo Build",
+      name: targetName ? `${targetName}` : "Cargo Build",
       cwd: selectedDir,
     });
     terminal.show();
+    
     const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
+    console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
     terminal.sendText(cargoCommand);
       }
     }
