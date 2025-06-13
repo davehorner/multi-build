@@ -80,9 +80,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(updateAndInstallCommand, async () => {
       try {
         const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+        vscode.window.showInformationMessage("Multi-Build: Pulling latest code...");
         // Pull latest code
         await execAsync("git pull", { cwd: workspacePath });
-
+        vscode.window.showInformationMessage("Multi-Build: Pulled latest code. Packaging extension...");
         // Always use the version from package.json
         const pkg = require(path.join(workspacePath, "package.json"));
         const vsixName = `multi-build-${pkg.version}.vsix`;
@@ -92,10 +93,9 @@ export function activate(context: vscode.ExtensionContext) {
         if (fs.existsSync(vsixPath)) {
           prevMtime = fs.statSync(vsixPath).mtime.getTime();
         }
-
         // Run npm run package and wait for it to finish
         await execAsync("npm run package", { cwd: workspacePath });
-
+        vscode.window.showInformationMessage("Multi-Build: Packaged extension. Waiting for VSIX file...");
         // Wait for the new .vsix file to be created/updated
         const waitForVsix = async () => {
           for (let i = 0; i < 30; ++i) { // up to ~15 seconds
@@ -114,8 +114,9 @@ export function activate(context: vscode.ExtensionContext) {
           vscode.window.showErrorMessage(`Multi-Build: ${vsixName} not found or not updated after packaging. Make sure packaging succeeded.`);
           return;
         }
-        // Install the correct VSIX
-        await execAsync(`code --install-extension ./${vsixName}`, { cwd: workspacePath });
+        vscode.window.showInformationMessage("Multi-Build: Installing extension from VSIX...");
+        // Install the correct VSIX using VS Code's API
+        await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsixPath));
         vscode.window.showInformationMessage(`Multi-Build: Pulled, packaged, and installed ${vsixName}`);
       } catch (err) {
         vscode.window.showErrorMessage(`Multi-Build: Update/install failed: ${err}`);
