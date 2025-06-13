@@ -79,6 +79,14 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(updateAndInstallCommand, async () => {
       try {
+        // Use a visible terminal for all steps
+        const terminal = vscode.window.createTerminal({ name: "Multi-Build Update" });
+        terminal.show();
+        terminal.sendText("git pull");
+        vscode.window.showInformationMessage("Multi-Build: Pulling latest code in terminal...");
+        // Wait a bit for git pull to finish
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+
         const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
         const pkg = require(path.join(workspacePath, "package.json"));
         const vsixName = `multi-build-${pkg.version}.vsix`;
@@ -88,13 +96,6 @@ export function activate(context: vscode.ExtensionContext) {
         if (fs.existsSync(vsixPath)) {
           prevMtime = fs.statSync(vsixPath).mtime.getTime();
         }
-        // Use a visible terminal for all steps
-        const terminal = vscode.window.createTerminal({ name: "Multi-Build Update" });
-        terminal.show();
-        terminal.sendText("git pull");
-        vscode.window.showInformationMessage("Multi-Build: Pulling latest code in terminal...");
-        // Wait a bit for git pull to finish
-        await new Promise((resolve) => setTimeout(resolve, 10000));
         terminal.sendText("npm run package");
         vscode.window.showInformationMessage("Multi-Build: Packaging extension in terminal...");
         // Wait for the new .vsix file to be created/updated
