@@ -153,6 +153,13 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage("Multi-Build: Sent update/install command to all machines in the room.");
     })
   );
+
+  // Create a status bar item to display the current version
+  const versionStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+  versionStatusBarItem.text = `$(tag) ${extensionName} v${context.extension.packageJSON.version}`;
+  versionStatusBarItem.tooltip = "Current version of Multi-Build extension";
+  versionStatusBarItem.show();
+  context.subscriptions.push(versionStatusBarItem);
 }
 
 export function deactivate() {
