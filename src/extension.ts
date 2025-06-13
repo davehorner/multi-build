@@ -82,10 +82,21 @@ export function activate(context: vscode.ExtensionContext) {
         // Use a visible terminal for all steps
         const terminal = vscode.window.createTerminal({ name: "Multi-Build Update" });
         terminal.show();
-        terminal.sendText("git pull");
-        vscode.window.showInformationMessage("Multi-Build: Pulling latest code in terminal...");
-        // Wait a bit for git pull to finish
-        await new Promise((resolve) => setTimeout(resolve, 10000));
+        // Use VS Code Git API to pull latest code instead of terminal command
+        try {
+          const git = getGitAPI();
+          const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+          const repo = git.repositories.find(r => r.rootUri.fsPath === workspacePath);
+          if (repo) {
+            // Pulls the currently checked out branch
+            await repo.pull();
+            vscode.window.showInformationMessage("Multi-Build: Pulled latest code using VS Code Git API.");
+          } else {
+            vscode.window.showWarningMessage("Multi-Build: No Git repository found for workspace, skipping pull.");
+          }
+        } catch (err) {
+          vscode.window.showWarningMessage(`Multi-Build: Git pull failed: ${err}`);
+        }
 
         const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
         const pkg = require(path.join(workspacePath, "package.json"));
@@ -513,7 +524,57 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     console.log(`${logTag} CMake build`);
     await vscode.commands.executeCommand("cmake.build");
   } else {
-    vscode.window.showErrorMessage(`${extensionName}: No CMakeLists.txt files found in the workspace.`);
+    // No Cargo.toml and no CMakeLists.txt
+    // Check for package.json with engines.vscode
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (workspaceFolder) {
+      const fs = require("fs");
+      const pkgPath = path.join(workspaceFolder, "package.json");
+      if (fs.existsSync(pkgPath)) {
+        const pkg = require(pkgPath);
+        if (pkg.engines && pkg.engines.vscode) {
+          vscode.window.showInformationMessage("Multi-Build: Detected VS Code extension project. Running npm install, packaging, and installing...");
+          const terminal = vscode.window.createTerminal({ name: "Multi-Build Extension Install" });
+          terminal.show();
+          terminal.sendText("npm install");
+          vscode.window.showInformationMessage("Multi-Build: Running npm install in terminal...");
+          await new Promise((resolve) => setTimeout(resolve, 15000));
+          terminal.sendText("npm run package");
+          vscode.window.showInformationMessage("Multi-Build: Packaging extension in terminal...");
+          // Wait for the new .vsix file to be created/updated
+          const version = pkg.version;
+          const vsixName = `multi-build-${version}.vsix`;
+          const vsixPath = path.join(workspaceFolder, vsixName);
+          let prevMtime = 0;
+          if (fs.existsSync(vsixPath)) {
+            prevMtime = fs.statSync(vsixPath).mtime.getTime();
+          }
+          const waitForVsix = async () => {
+            for (let i = 0; i < 30; ++i) { // up to ~15 seconds
+              if (fs.existsSync(vsixPath)) {
+                const mtime = fs.statSync(vsixPath).mtime.getTime();
+                if (mtime > prevMtime) {
+                  return true;
+                }
+              }
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+            return false;
+          };
+          const found = await waitForVsix();
+          if (!found) {
+            vscode.window.showErrorMessage(`Multi-Build: ${vsixName} not found or not updated after packaging. Make sure packaging succeeded.`);
+            return;
+          }
+          vscode.window.showInformationMessage(`Multi-Build: Installing extension from VSIX...`);
+          await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsixPath));
+          await vscode.commands.executeCommand('workbench.action.reloadWindow');
+          vscode.window.showInformationMessage(`Multi-Build: Installed and reloaded VS Code extension from ${vsixName}`);
+          return;
+        }
+      }
+    }
+    vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml, CMakeLists.txt, or VS Code extension (package.json with engines.vscode) found in the workspace.`);
   }
 }
 
