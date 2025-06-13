@@ -770,7 +770,8 @@ async function connectWebSocket() {
         vscode.window.showErrorMessage(`${extensionName}: ${message.message}`);
       } else if (message.type === "sync") {
         console.log(`${logTag} Sync message received:`, message.data);
-        await handleSyncData(message.data);
+        // Don't await handleSyncData to avoid blocking the WebSocket message handler
+        handleSyncData(message.data);
       } else if (message.type === "update-and-install") {
         // Show notification when update/install message is received
         vscode.window.showInformationMessage("Multi-Build: Received update/install command from room. Running update...");
