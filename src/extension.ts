@@ -388,8 +388,13 @@ async function pushRepoSettings() {
   let cargoSelected = false;
   if (cargoFiles.length > 0 && workspaceFolder) {
     vscode.window.showInformationMessage(`Multi-Build: Found ${cargoFiles.length} Cargo.toml file(s) in the workspace.`);
+    // Sort the files alphabetically by their paths
+    const sortedCargoFiles = cargoFiles.sort((a, b) => a.fsPath.localeCompare(b.fsPath));
+
+    console.log(`${cargoLogTag} Found and sorted Cargo.toml files:`, sortedCargoFiles.map(f => f.fsPath));
+
     const selectedFile = await vscode.window.showQuickPick(
-      cargoFiles.map((file) => ({
+      sortedCargoFiles.map((file) => ({
         label: path.basename(file.fsPath),
         description: file.fsPath,
         filePath: file.fsPath,
@@ -531,8 +536,13 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
         const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
         console.debug(`${logTag} Found Cargo.toml files:`, cargoFiles.map(f => f.fsPath));
         if (cargoFiles.length > 0) {
+          // Sort the files alphabetically by their paths
+          const sortedCargoFiles = cargoFiles.sort((a, b) => a.fsPath.localeCompare(b.fsPath));
+
+          console.log(`${cargoLogTag} Found and sorted Cargo.toml files:`, sortedCargoFiles.map(f => f.fsPath));
+
           selectedFile = await vscode.window.showQuickPick(
-        cargoFiles.map((file) => ({
+        sortedCargoFiles.map((file) => ({
           label: path.basename(file.fsPath),
           description: file.fsPath,
           filePath: file.fsPath,
