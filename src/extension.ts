@@ -552,6 +552,8 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
     console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
     terminal.sendText(cargoCommand);
+      } else {
+        vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
       }
     }
   }
@@ -805,6 +807,7 @@ async function connectWebSocket() {
         const { manifestPath, target } = message.data;
         if (!manifestPath) {
           console.warn(`${cargoLogTag} No manifestPath provided in cargo-e message`);
+          vscode.window.showErrorMessage(`${cargoLogTag} No manifestPath provided in cargo-e message`);
           return;
         }
 
