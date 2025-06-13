@@ -759,7 +759,11 @@ async function connectWebSocket() {
     try {
       assert(roomSocket);
       // DEBUG: Notify and log on every message received
-      vscode.window.showInformationMessage(`Multi-Build: WebSocket message received: ${data.toString()}`);
+      
+      if (data.toString() !== "keep-alive" && data.toString() !== '{"type":"ack"}') {
+        vscode.window.showInformationMessage(`Multi-Build: WebSocket message received: ${data.toString()}`);
+      }
+
       console.debug(`${logTag} WebSocket message received (raw):`, data.toString());
       const message = JSON.parse(data.toString());
       if (message.type === "hello") {
