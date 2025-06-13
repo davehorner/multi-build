@@ -139,7 +139,12 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Multi-Build v${version}: Installing extension from VSIX...`);
         // Install the correct VSIX using VS Code's API
         await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(foundVsix));
-        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+        // Broadcast a refresh command to all connected instances after successful upgrade
+        vscode.commands.executeCommand('workbench.action.reloadWindow');
+        if (roomSocket) {
+          sendMessage({ type: "refresh-all-windows" });
+          vscode.window.showInformationMessage("Multi-Build: Refresh command sent to all connected instances.");
+        }
         vscode.window.showInformationMessage(`Multi-Build: Pulled, packaged, and installed ${vsixName} (v${version})`);
       } catch (err) {
         vscode.window.showErrorMessage(`Multi-Build: Update/install failed: ${err}`);
@@ -774,6 +779,9 @@ async function connectWebSocket() {
         } else {
           vscode.window.showWarningMessage("Multi-Build: Ignored update/install command (not multi-build repo)");
         }
+      } else if (message.type === "refresh-all-windows") {
+        console.log(`${logTag} Received refresh-all-windows command.`);
+        await vscode.commands.executeCommand("workbench.action.reloadWindow");
       } else {
         console.error(`${logTag} Unknown message type: ${message.type}`);
         vscode.window.showErrorMessage(`${extensionName}: Unknown message type: ${message.type}`);
