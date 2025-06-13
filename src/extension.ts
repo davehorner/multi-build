@@ -110,26 +110,21 @@ export function activate(context: vscode.ExtensionContext) {
         }
         vscode.window.showInformationMessage(`Multi-Build v${version}: Pulling latest code in terminal...`);
 
-        // Clean up old VSIX files before packaging
-        const glob = require("glob");
-        const oldVsixFiles = glob.sync(path.join(workspacePath, "multi-build-*.vsix"));
-        for (const file of oldVsixFiles) {
-          try { fs.unlinkSync(file); } catch (e) { /* ignore */ }
+        // Clean up old VSIX files before packaging (remove glob, just delete known file)
+        if (fs.existsSync(vsixPath)) {
+          try { fs.unlinkSync(vsixPath); } catch (e) { /* ignore */ }
         }
-        vscode.window.showInformationMessage("Multi-Build: Deleted old VSIX files before packaging.");
+        vscode.window.showInformationMessage("Multi-Build: Deleted previous VSIX file before packaging.");
 
         terminal.sendText("npm run package");
         vscode.window.showInformationMessage(`Multi-Build v${version}: Packaging extension in terminal...`);
-        // Wait for the new .vsix file to be created/updated
+        // Wait for the new .vsix file to be created/updated (remove glob, just check vsixPath)
         const waitForVsix = async () => {
-          const glob = require("glob");
           for (let i = 0; i < 30; ++i) { // up to ~15 seconds
-            const vsixFiles = glob.sync(path.join(workspacePath, `multi-build-*.vsix`));
-            const expectedVsix = vsixFiles.find((f: string) => path.basename(f) === vsixName);
-            if (expectedVsix && fs.existsSync(expectedVsix)) {
-              const mtime = fs.statSync(expectedVsix).mtime.getTime();
+            if (fs.existsSync(vsixPath)) {
+              const mtime = fs.statSync(vsixPath).mtime.getTime();
               if (mtime > prevMtime) {
-                return expectedVsix;
+                return vsixPath;
               }
             }
             await new Promise((resolve) => setTimeout(resolve, 3000));
