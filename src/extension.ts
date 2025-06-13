@@ -575,6 +575,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     // Optionally, set the workspace folder to the directory containing the selected CMakeLists.txt
     const cmakeDir = path.dirname(cmakeFileToUse.fsPath);
     console.log(`${logTag} Using CMakeLists.txt in: ${cmakeDir}`);
+    console.debug(`${logTag} Using CMakeLists.txt in: ${cmakeDir}`);
     vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(cmakeDir), false);
 
     console.log(`${logTag} Found CMakeLists.txt files:`, cmakeFiles.map(f => f.fsPath));
