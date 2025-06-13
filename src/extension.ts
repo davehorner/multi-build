@@ -456,6 +456,12 @@ function sendMessage({ type, data }: { type: string; data?: unknown }) {
   if (!roomSocket) {
     throw new Error("No WebSocket connection found");
   }
+  // Don't show or send keep-alive messages with data
+  if (type === "keep-alive" && data) {
+    console.debug(`${logTag} Sending message: ${type}`, { data });
+    roomSocket.send(JSON.stringify({ type, data }));
+    return;
+  }
   vscode.window.showInformationMessage(`Multi-Build: Sending message: ${type}${data ? ", data: " + JSON.stringify(data) : ""}`);
   console.debug(`${logTag} Sending message: ${type}`, { data });
   roomSocket.send(JSON.stringify({ type, data }));
