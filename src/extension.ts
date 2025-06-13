@@ -119,6 +119,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage("Multi-Build: Installing extension from VSIX...");
         // Install the correct VSIX using VS Code's API
         await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsixPath));
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
         vscode.window.showInformationMessage(`Multi-Build: Pulled, packaged, and installed ${vsixName}`);
       } catch (err) {
         vscode.window.showErrorMessage(`Multi-Build: Update/install failed: ${err}`);
