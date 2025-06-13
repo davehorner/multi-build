@@ -781,6 +781,11 @@ async function connectWebSocket() {
         }
       } else if (message.type === "refresh-all-windows") {
         console.log(`${logTag} Received refresh-all-windows command.`);
+
+        // Broadcast refresh command to all connected instances
+        sendMessage({ type: "refresh-all-windows" });
+
+        // Refresh the current window
         await vscode.commands.executeCommand("workbench.action.reloadWindow");
       } else {
         console.error(`${logTag} Unknown message type: ${message.type}`);
