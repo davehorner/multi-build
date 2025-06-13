@@ -80,11 +80,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(updateAndInstallCommand, async () => {
       try {
         const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
-        vscode.window.showInformationMessage("Multi-Build: Pulling latest code...");
-        // Pull latest code
-        await execAsync("git pull", { cwd: workspacePath });
-        vscode.window.showInformationMessage("Multi-Build: Pulled latest code. Packaging extension...");
-        // Always use the version from package.json
         const pkg = require(path.join(workspacePath, "package.json"));
         const vsixName = `multi-build-${pkg.version}.vsix`;
         const vsixPath = path.join(workspacePath, vsixName);
@@ -93,9 +88,15 @@ export function activate(context: vscode.ExtensionContext) {
         if (fs.existsSync(vsixPath)) {
           prevMtime = fs.statSync(vsixPath).mtime.getTime();
         }
-        // Run npm run package and wait for it to finish
-        await execAsync("npm run package", { cwd: workspacePath });
-        vscode.window.showInformationMessage("Multi-Build: Packaged extension. Waiting for VSIX file...");
+        // Use a visible terminal for all steps
+        const terminal = vscode.window.createTerminal({ name: "Multi-Build Update" });
+        terminal.show();
+        terminal.sendText("git pull");
+        vscode.window.showInformationMessage("Multi-Build: Pulling latest code in terminal...");
+        // Wait a bit for git pull to finish
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+        terminal.sendText("npm run package");
+        vscode.window.showInformationMessage("Multi-Build: Packaging extension in terminal...");
         // Wait for the new .vsix file to be created/updated
         const waitForVsix = async () => {
           for (let i = 0; i < 30; ++i) { // up to ~15 seconds
@@ -105,7 +106,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return true;
               }
             }
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 1500));
           }
           return false;
         };
