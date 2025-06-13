@@ -365,6 +365,7 @@ async function pushRepoSettings() {
   let manifestPath: string | undefined = undefined;
   let target: string | undefined = undefined;
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  let cargoSelected = false;
   if (cargoFiles.length > 0 && workspaceFolder) {
     const selectedFile = await vscode.window.showQuickPick(
       cargoFiles.map((file) => ({
@@ -373,29 +374,28 @@ async function pushRepoSettings() {
         filePath: file.fsPath,
       })),
       {
-        placeHolder: "Select a Cargo.toml file",
+        placeHolder: "Select a Cargo.toml file (Esc to skip)",
       },
     );
-    if (!selectedFile) {
-      vscode.window.showErrorMessage(`${extensionName}: No file selected.`);
-      return;
+    if (selectedFile) {
+      // Store manifestPath as relative to workspace root
+      manifestPath = path.relative(workspaceFolder, selectedFile.filePath);
+      const selectedTarget = await listCargoETargets(selectedFile.filePath).catch((error) => {
+        vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
+        return null;
+      });
+      if (!selectedTarget) {
+        console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
+      }
+      target = selectedTarget ? selectedTarget.label : undefined;
+      cargoSelected = true;
     }
-    // Store manifestPath as relative to workspace root
-    manifestPath = path.relative(workspaceFolder, selectedFile.filePath);
-    const selectedTarget = await listCargoETargets(selectedFile.filePath).catch((error) => {
-      vscode.window.showErrorMessage(`${cargoLogTag} Error listing Cargo-e targets: ${error}`);
-      return null;
-    });
-    if (!selectedTarget) {
-      console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
-    }
-    target = selectedTarget ? selectedTarget.label : undefined;
   }
 
-  // Only include manifestPath/target if a Cargo.toml was selected, otherwise don't include them (for CMake-only projects)
+  // Only include manifestPath/target if a Cargo.toml was selected
   const data: any = { repo, remote, branch };
-  if (manifestPath) { data.manifestPath = manifestPath; }
-  if (target) { data.target = target; }
+  if (cargoSelected && manifestPath) { data.manifestPath = manifestPath; }
+  if (cargoSelected && target) { data.target = target; }
 
   console.log(`${logTag} Saving changes to config:`, data);
   await vscode.workspace.getConfiguration().update(syncDataConfigKey, data, true);
