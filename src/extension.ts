@@ -493,6 +493,19 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   if (repoObj && workspaceFolder) {
     let selectedFilePath = manifestPath ? path.resolve(workspaceFolder, ...manifestPath.split(/[\\\/]/)) : undefined;
     let targetName = target;
+    if (manifestPath && targetName) {
+      await vscode.window.showInformationMessage(
+        `${extensionName}: Using Cargo manifest: ${manifestPath}, target: ${targetName}`
+      );
+    } else if (manifestPath) {
+      await vscode.window.showInformationMessage(
+        `${extensionName}: Using Cargo manifest: ${manifestPath}`
+      );
+    } else if (targetName) {
+      await vscode.window.showInformationMessage(
+        `${extensionName}: Using Cargo target: ${targetName}`
+      );
+    }
     if (!selectedFilePath) {
       let selectedFile: { label: string; description: string; filePath: string } | undefined = undefined;
 
@@ -563,12 +576,12 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
         console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
         terminal.sendText(cargoCommand);
       } else {
-        vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
+        await vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
       }
     }
   } else {
     console.warn(`${logTag} No Git repository found for workspace, skipping Cargo build.`);
-    vscode.window.showWarningMessage(`${extensionName}: No Git repository found for workspace, skipping Cargo build.`);
+    await vscode.window.showWarningMessage(`${extensionName}: No Git repository found for workspace, skipping Cargo build.`);
   }
 
   // Check if CMakeLists.txt exists in the repo root
