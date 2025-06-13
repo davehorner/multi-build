@@ -455,10 +455,6 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     if (!selectedFilePath) {
       const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
       console.debug(`${logTag} Found Cargo.toml files:`, cargoFiles.map(f => f.fsPath));
-      if (cargoFiles.length === 0) {
-        vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml files found in the workspace.`);
-        return;
-      }
       const selectedFile = await vscode.window.showQuickPick(
         cargoFiles.map((file) => ({
           label: path.basename(file.fsPath),
