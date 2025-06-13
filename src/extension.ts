@@ -457,7 +457,7 @@ function sendMessage({ type, data }: { type: string; data?: unknown }) {
     throw new Error("No WebSocket connection found");
   }
   // Don't show or send keep-alive messages with data
-  if (data && data === "keep-alive") {
+  if (type === "keep-alive") {
     console.debug(`${logTag} Sending message: ${type}`, { data });
     roomSocket.send(JSON.stringify({ type, data }));
     return;
