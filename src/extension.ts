@@ -568,6 +568,7 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
           console.warn(`${cargoLogTag} No target selected, running default Cargo-e command`);
         }
         targetName = selectedTarget ? selectedTarget.label : undefined;
+        handleCargoECommand(selectedFilePath, targetName, workspaceFolder);
         // Send WebSocket message to synchronize with other systems
         sendMessage({
           type: "cargo-e",
@@ -580,7 +581,6 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
           },
         });
 
-        handleCargoECommand(selectedFilePath, targetName, workspaceFolder);
  
       } else {
         await vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
@@ -887,6 +887,9 @@ async function connectWebSocket() {
         // terminal.sendText(cargoCommand);
         if (workspaceFolder && manifestPath) {
           handleCargoECommand(manifestPath, target, workspaceFolder);
+        } else {
+          vscode.window.showErrorMessage(`${cargoLogTag} Cannot run cargo-e: workspaceFolder or manifestPath is undefined.`);
+          console.error(`${cargoLogTag} Cannot run cargo-e: workspaceFolder or manifestPath is undefined.`);
         }
       } else {
         console.error(`${logTag} Unknown message type: ${message.type}`);
