@@ -373,6 +373,7 @@ async function pushRepoSettings() {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   let cargoSelected = false;
   if (cargoFiles.length > 0 && workspaceFolder) {
+    vscode.window.showInformationMessage(`Multi-Build: Found ${cargoFiles.length} Cargo.toml file(s) in the workspace.`);
     const selectedFile = await vscode.window.showQuickPick(
       cargoFiles.map((file) => ({
         label: path.basename(file.fsPath),
@@ -645,6 +646,11 @@ async function listCargoETargets(manifestPath: string): Promise<{ label: string;
         }
       );
     });
+
+    if (!output) {
+      console.warn(`${cargoLogTag} No output from cargo-e, skipping target listing.`);
+      return null;
+    }
 
     console.log(`${cargoLogTag} Raw output from cargo-e:`, output);
 
