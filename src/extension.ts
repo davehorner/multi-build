@@ -967,15 +967,23 @@ async function checkoutBranch(
     return false;
   }
 
-  if (repo.getBranch(branchName) !== undefined) {
-    console.debug(`${logTag} Branch '${branchName}' already exists`);
-    await repo.checkout(branchName);
-    await repo.pull();
-  } else {
-    console.debug(`${logTag} Branch '${branchName}' does not exist, creating new branch`);
-    await repo.checkout(ref);
-    await repo.createBranch(branchName, true, ref);
-    await repo.setBranchUpstream(branchName, ref);
+  try {
+    if (repo.getBranch(branchName) !== undefined) {
+      console.debug(`${logTag} Branch '${branchName}' already exists`);
+      await repo.checkout(branchName);
+      await repo.pull();
+    } else {
+      console.debug(`${logTag} Branch '${branchName}' does not exist, creating new branch`);
+      await repo.checkout(ref);
+      await repo.createBranch(branchName, true, ref);
+      await repo.setBranchUpstream(branchName, ref);
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `${extensionName}: Error checking out or creating branch '${branchName}': ${error}`,
+    );
+    console.error(`${logTag} Error during branch checkout/create:`, error);
+    return false;
   }
 
   console.log(`${logTag} Checked out branch '${branchName}' in repository ${repoName}`);
