@@ -336,10 +336,24 @@ async function pushRepoSettings() {
   }
 
   // Always ask the branch name, as this is what changes most often.
-  const branch = await vscode.window.showInputBox({
+  // Try to get the current branch from the selected repo
+  let branch: string | undefined = config?.branch;
+  if (!branch) {
+    try {
+      const git = getGitAPI();
+      const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
+      branch = repoObj?.state.HEAD?.name;
+    } catch (e) {
+      // ignore error, fallback to default
+    }
+  }
+  if (!branch) {
+    branch = "master";
+  }
+  branch = await vscode.window.showInputBox({
     prompt: "Enter the branch name",
     placeHolder: "hello-branch",
-    value: config?.branch || "master",
+    value: branch || "master",
   });
   if (!branch) {
     vscode.window.showErrorMessage(`${extensionName}: Cannot sync, no branch specified`);
