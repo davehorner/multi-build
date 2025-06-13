@@ -437,8 +437,9 @@ function getSyncData() {
   const repo = config.get<string>("repo");
   const remote = config.get<string>("remote");
   const branch = config.get<string>("branch");
-
-  return { repo, remote, branch };
+  const manifestPath = config.get<string>("manifestPath");
+  const target = config.get<string>("target");
+  return { repo, remote, branch, manifestPath, target };
 }
 
 async function getAuthToken() {
@@ -485,9 +486,6 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     return;
   }
 
-  vscode.window.showInformationMessage(
-    `${extensionName}: Checked out branch '${branch}' from '${repo}/${remote}'`,
-  );
   // Check if Cargo.toml exists in the repo root
   const git = getGitAPI();
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
@@ -936,5 +934,8 @@ async function checkoutBranch(
   }
 
   console.log(`${logTag} Checked out branch '${branchName}' in repository ${repoName}`);
+  vscode.window.showInformationMessage(
+    `${extensionName}: Checked out branch '${branchName}' from '${repoName}' (remote: ${remoteName})`,
+  );
   return true;
 }
