@@ -144,6 +144,8 @@ export function activate(context: vscode.ExtensionContext) {
         if (roomSocket) {
           sendMessage({ type: "refresh-all-windows" });
           vscode.window.showInformationMessage("Multi-Build: Refresh command sent to all connected instances.");
+        } else {
+          vscode.window.showInformationMessage("Multi-Build: No WebSocket connection (roomSocket is 0), not refreshing other code instances.");
         }
         vscode.window.showInformationMessage(`Multi-Build: Pulled, packaged, and installed ${vsixName} (v${version})`);
       } catch (err) {
@@ -781,9 +783,6 @@ async function connectWebSocket() {
         }
       } else if (message.type === "refresh-all-windows") {
         console.log(`${logTag} Received refresh-all-windows command.`);
-
-        // Broadcast refresh command to all connected instances
-        sendMessage({ type: "refresh-all-windows" });
 
         // Refresh the current window
         await vscode.commands.executeCommand("workbench.action.reloadWindow");
