@@ -1031,26 +1031,31 @@ async function handleCargoE(data: { manifestPath: string; target?: string }) {
 }
 
 function handleCargoECommand(selectedFilePath: string, targetName: string | undefined, workspaceFolder: string) {
-  if (!selectedFilePath || !workspaceFolder) {
-    vscode.window.showErrorMessage(`${cargoLogTag} Cannot run cargo-e: missing manifest path or workspace folder.`);
-    return;
+  try {
+    if (!selectedFilePath || !workspaceFolder) {
+      vscode.window.showErrorMessage(`${cargoLogTag} Cannot run cargo-e: missing manifest path or workspace folder.`);
+      return;
+    }
+
+    const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
+    const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
+
+    console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+    const terminal = vscode.window.createTerminal({
+      name: targetName ? `${targetName}` : "Cargo Build",
+      cwd: selectedDir,
+    });
+    terminal.show();
+
+    const cargoCommand = targetName
+      ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}`
+      : `cargo-e --manifest-path "${posixManifestPath}"`;
+    console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+    terminal.sendText(cargoCommand);
+  } catch (error) {
+    vscode.window.showErrorMessage(`${cargoLogTag} Error running cargo-e: ${error}`);
+    console.error(`${cargoLogTag} Error running cargo-e:`, error);
   }
-
-  const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
-  const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
-
-  console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
-  const terminal = vscode.window.createTerminal({
-    name: targetName ? `${targetName}` : "Cargo Build",
-    cwd: selectedDir,
-  });
-  terminal.show();
-
-  const cargoCommand = targetName
-    ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}`
-    : `cargo-e --manifest-path "${posixManifestPath}"`;
-  console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
-  terminal.sendText(cargoCommand);
 
 
         //      // Run cargo-e with the selected or received manifestPath and target
