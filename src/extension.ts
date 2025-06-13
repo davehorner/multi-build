@@ -490,6 +490,11 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   const git = getGitAPI();
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  // Info: repoObj is the VS Code Git repository object for the selected repo, or undefined if not found.
+  // Info: workspaceFolder is the absolute path to the first workspace folder, or undefined if not open.
+  vscode.window.showInformationMessage(
+    `${extensionName}: Synced to branch '${branch}' in repository '${repo}'.`
+  );
   if (repoObj && workspaceFolder) {
     let selectedFilePath = manifestPath ? path.resolve(workspaceFolder, ...manifestPath.split(/[\\\/]/)) : undefined;
     let targetName = target;
