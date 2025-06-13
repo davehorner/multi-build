@@ -801,6 +801,33 @@ async function connectWebSocket() {
 
         // Refresh the current window
         await vscode.commands.executeCommand("workbench.action.reloadWindow");
+      } else if (message.type === "cargo-e") {
+        const { manifestPath, target } = message.data;
+        if (!manifestPath) {
+          console.warn(`${cargoLogTag} No manifestPath provided in cargo-e message`);
+          return;
+        }
+
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (!workspaceFolder || !manifestPath) {
+          vscode.window.showErrorMessage(`${cargoLogTag} Cannot run cargo-e: workspaceFolder or manifestPath is undefined.`);
+          return;
+        }
+        const posixManifestPath = manifestPath.split(path.sep).join(path.posix.sep);
+        const selectedDir = path.dirname(path.resolve(workspaceFolder, manifestPath));
+
+        console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+        const terminal = vscode.window.createTerminal({
+          name: target ? `${target}` : "Cargo Build",
+          cwd: selectedDir,
+        });
+        terminal.show();
+
+        const cargoCommand = target
+          ? `cargo-e --manifest-path "${posixManifestPath}" --target ${target}`
+          : `cargo-e --manifest-path "${posixManifestPath}"`;
+        console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+        terminal.sendText(cargoCommand);
       } else {
         console.error(`${logTag} Unknown message type: ${message.type}`);
         vscode.window.showErrorMessage(`${extensionName}: Unknown message type: ${message.type}`);
