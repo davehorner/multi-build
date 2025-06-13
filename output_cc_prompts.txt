@@ -1,0 +1,91 @@
+
+----------------------
+Here’s a revised prompt to generate a clearer and more effective conventional commit message based on the changes you provided:
+
+---
+
+**Prompt:**
+
+Please create a conventional commit message that accurately reflects the modifications made in the `src/extension.ts` file as shown in the provided diff. The changes include:
+
+1. **Enhancement**: Updated the `handleSyncData` function to accept two new optional parameters: `manifestPath` and `target`.
+2. **Refactoring**: Adjusted the logic to allow the selection of a Cargo.toml file only if `manifestPath` is not provided, and integrated handling for the `target` parameter more efficiently for command execution.
+
+Make sure to include the type of change (such as `feat` for a feature or `refactor` for a code change), a brief summary, and mention the specific functionality affected. 
+
+---
+
+This prompt encourages clarity about the nature of the changes while adhering to conventional commit standards.
+
+
+----------------------
+To generate a more effective conventional commit message, consider using the following prompt:
+
+---
+
+**Prompt:**
+
+Create a conventional commit message based on the changes made in the `src/extension.ts` file, describing the major modifications including the removal of a comment and the addition of functionality to select `Cargo.toml` files and their associated targets. Ensure the message follows the format: `type(scope): subject` and includes a brief body if necessary to provide context. Also, reference the specific file affected.
+
+---
+
+This prompt encourages clarity, specificity, and adherence to conventional commit guidelines while focusing on the changes in the highlighted file.
+
+
+----------------------
+Here's an improved prompt to generate a conventional commit message based on the provided code changes:
+
+---
+
+"Please create a conventional commit message that summarizes the changes made in the `src/extension.ts` file. The changes involve updating the logic to retrieve the workspace folder when checking for `Cargo.toml` files and modifying how the `manifestPath` is handled, making it relative to the workspace root. Ensure the commit message follows conventional commit specifications, including the type of change (e.g., `fix`, `feat`, `refactor`), a brief description of the change, and any relevant file references. For example:
+
+```
+feat(extension): update workspace handling for Cargo.toml files
+```
+
+Provide a detailed message that captures the essence of the changes made."
+
+--- 
+
+This prompt is structured to drive focus on both the specifics of the change and adherence to conventional commit structures.
+
+
+----------------------
+To generate a more effective conventional commit message based on the changes in the provided diff, use the following prompt:
+
+---
+
+**Prompt:**
+
+"Create a conventional commit message that accurately summarizes the changes made in the specified code files while following the conventional commit specification. The changes include improvements in file handling logic in 'src/extension.ts', specifically for managing workspace folders and manifest paths within a function. Ensure the message clearly indicates the type of changes (e.g., `fix`, `feat`, `chore`) and provides context about what was modified or added."
+
+--- 
+
+By using this prompt, you'll encourage the generation of a conventional commit message that conveys necessary details about the change type, along with descriptions that are specific and relevant to the adjusted code.
+
+
+----------------------
+Here’s an improved prompt to generate a structured conventional commit message based on the provided code changes:
+
+---
+
+**Prompt:**
+
+Create a conventional commit message that summarizes the changes in the given code diff while adhering to the Conventional Commits specification. Your message should include the type of changes made, a brief description of the modifications, and reference specific files that were affected.
+
+Consider the following changes:
+1. Bumped the version in `package.json` from `0.0.6` to `0.0.7`.
+2. Added new commands to the extension's command palette in `package.json`.
+3. Implemented the functionality for the new commands in `src/extension.ts`, including logic for updating, packaging, and installing the extension, as well as broadcasting updates to all machines.
+4. Made some code refactoring adjustments, including normalizing paths and improving the handling of cargo commands.
+
+Your message should contain:
+- A type (e.g., feat, fix, chore)
+- A subject line
+- A body describing the changes in detail
+- A footer if necessary, referencing any issues closed or relevant links.
+
+---
+
+This prompt clearly outlines the expectations for the commit message and provides context about the changes made, ensuring the generated message is comprehensive and in line with conventional standards.
+

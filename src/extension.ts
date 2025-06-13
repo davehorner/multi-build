@@ -405,6 +405,7 @@ function sendMessage({ type, data }: { type: string; data?: unknown }) {
   if (!roomSocket) {
     throw new Error("No WebSocket connection found");
   }
+  vscode.window.showInformationMessage(`Multi-Build: Sending message: ${type}${data ? ", data: " + JSON.stringify(data) : ""}`);
   console.debug(`${logTag} Sending message: ${type}`, { data });
   roomSocket.send(JSON.stringify({ type, data }));
 }

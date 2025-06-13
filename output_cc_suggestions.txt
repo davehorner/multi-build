@@ -1,0 +1,68 @@
+
+----------------------
+feat: add command to show/edit Multi-Build room ID in extension.ts and update package.json
+
+
+----------------------
+feat: enhance handleSyncData function to accept optional manifestPath and target parameters in extension.ts
+
+
+----------------------
+feat: update handleSyncData function to accept optional manifestPath and target parameters in extension.ts
+
+
+----------------------
+feat: enhance branch prompt with Cargo.toml selection functionality in extension.ts
+
+
+----------------------
+feat: add support for selecting Cargo.toml files in pushRepoSettings function
+
+
+----------------------
+feat: improve workspace awareness in pushRepoSettings function by checking if workspace folder exists
+
+
+----------------------
+fix: improve handling of manifest path and workspace folder in pushRepoSettings function
+
+
+----------------------
+fix: improve handling of workspace folder in pushRepoSettings function in extension.ts
+
+
+----------------------
+feat: add multiBuild commands for updating and broadcasting installation functionality in package.json and extension.ts
+
+
+----------------------
+chore: bump version to 0.0.7 and add update/install commands in extension functionality
+
+
+----------------------
+chore: update version to 0.0.7 and add update/install commands in the extension
+
+
+----------------------
+chore: update version to 0.0.8 and add notification for update/install command in extension.ts
+
+
+----------------------
+feat: improve packaging process by adding file existence check and polling mechanism in extension.ts
+
+
+----------------------
+chore: update version to 0.0.10 and add WebSocket connection notifications in extension.ts
+
+
+----------------------
+feat: add informational messages during git pull and extension packaging process in extension.ts
+
+
+----------------------
+chore: update version to 0.0.12 and enhance user feedback during extension installation process
+
+
+----------------------
+refactor(extension): update packaging process to use terminal commands
+
