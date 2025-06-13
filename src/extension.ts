@@ -477,6 +477,12 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     return;
   }
 
+  const git = getGitAPI();
+  const currentRepoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
+  if (!currentRepoObj) {
+    vscode.window.showWarningMessage(`${extensionName}: The repository '${repo}' does not match any open repository in this workspace.`);
+    return;
+  }
   console.log(`${logTag} Syncing repo: ${repo}, remote: ${remote}, branch: ${branch}`);
 
   const checkoutResult = await checkoutBranch(repo, remote, branch);
@@ -487,7 +493,6 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   }
   await vscode.window.showInformationMessage(`${extensionName}: Synced to branch '${branch}' in repository '${repo}'.`);
   // Check if Cargo.toml exists in the repo root
-  const git = getGitAPI();
   const repoObj = git.repositories.find((r) => path.basename(r.rootUri.fsPath) === repo);
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   // Info: repoObj is the VS Code Git repository object for the selected repo, or undefined if not found.
@@ -565,21 +570,9 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
             target: targetName,
           },
         });
-            // Run cargo-e with the selected or received manifestPath and target
-        // Normalize to POSIX path for --manifest-path argument
-        const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
-        const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
-        console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
-        
-        const terminal = vscode.window.createTerminal({
-          name: targetName ? `${targetName}` : "Cargo Build",
-          cwd: selectedDir,
-        });
-        terminal.show();
-        
-        const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
-        console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
-        terminal.sendText(cargoCommand);
+
+        handleCargoECommand(selectedFilePath, targetName, workspaceFolder);
+ 
       } else {
         await vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
       }
@@ -863,21 +856,24 @@ async function connectWebSocket() {
           vscode.window.showErrorMessage(`${cargoLogTag} Cannot run cargo-e: workspaceFolder or manifestPath is undefined.`);
           return;
         }
-        const posixManifestPath = manifestPath.split(path.sep).join(path.posix.sep);
-        const selectedDir = path.dirname(path.resolve(workspaceFolder, manifestPath));
+        // const posixManifestPath = manifestPath.split(path.sep).join(path.posix.sep);
+        // const selectedDir = path.dirname(path.resolve(workspaceFolder, manifestPath));
 
-        console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
-        const terminal = vscode.window.createTerminal({
-          name: target ? `${target}` : "Cargo Build",
-          cwd: selectedDir,
-        });
-        terminal.show();
+        // console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+        // const terminal = vscode.window.createTerminal({
+        //   name: target ? `${target}` : "Cargo Build",
+        //   cwd: selectedDir,
+        // });
+        // terminal.show();
 
-        const cargoCommand = target
-          ? `cargo-e --manifest-path "${posixManifestPath}" --target ${target}`
-          : `cargo-e --manifest-path "${posixManifestPath}"`;
-        console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
-        terminal.sendText(cargoCommand);
+        // const cargoCommand = target
+        //   ? `cargo-e --manifest-path "${posixManifestPath}" --target ${target}`
+        //   : `cargo-e --manifest-path "${posixManifestPath}"`;
+        // console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+        // terminal.sendText(cargoCommand);
+        if (workspaceFolder && manifestPath) {
+          handleCargoECommand(manifestPath, target, workspaceFolder);
+        }
       } else {
         console.error(`${logTag} Unknown message type: ${message.type}`);
         vscode.window.showErrorMessage(`${extensionName}: Unknown message type: ${message.type}`);
@@ -973,3 +969,79 @@ async function checkoutBranch(
   );
   return true;
 }
+
+async function handleCargoE(data: { manifestPath: string; target?: string }) {
+  const { manifestPath, target } = data;
+
+  if (!manifestPath) {
+    console.warn(`${cargoLogTag} No manifestPath provided in cargo-e message`);
+    vscode.window.showErrorMessage(`${cargoLogTag} No manifestPath provided in cargo-e message`);
+    return;
+  }
+
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!workspaceFolder) {
+    console.error(`${cargoLogTag} Workspace folder is undefined. Cannot run cargo-e.`);
+    vscode.window.showErrorMessage(`${cargoLogTag} Cannot run cargo-e: workspaceFolder is undefined.`);
+    return;
+  }
+
+  console.log(`${cargoLogTag} Resolved workspace folder: ${workspaceFolder}`);
+
+  const posixManifestPath = manifestPath.split(path.sep).join(path.posix.sep);
+  const selectedDir = path.dirname(path.resolve(workspaceFolder, manifestPath));
+
+  console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+  const terminal = vscode.window.createTerminal({
+    name: target ? `${target}` : "Cargo Build",
+    cwd: selectedDir,
+  });
+  terminal.show();
+
+  const cargoCommand = target
+    ? `cargo-e --manifest-path "${posixManifestPath}" --target ${target}`
+    : `cargo-e --manifest-path "${posixManifestPath}"`;
+  console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+  terminal.sendText(cargoCommand);
+}
+
+function handleCargoECommand(selectedFilePath: string, targetName: string | undefined, workspaceFolder: string) {
+  if (!selectedFilePath || !workspaceFolder) {
+    vscode.window.showErrorMessage(`${cargoLogTag} Cannot run cargo-e: missing manifest path or workspace folder.`);
+    return;
+  }
+
+  const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
+  const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
+
+  console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+  const terminal = vscode.window.createTerminal({
+    name: targetName ? `${targetName}` : "Cargo Build",
+    cwd: selectedDir,
+  });
+  terminal.show();
+
+  const cargoCommand = targetName
+    ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}`
+    : `cargo-e --manifest-path "${posixManifestPath}"`;
+  console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+  terminal.sendText(cargoCommand);
+
+
+        //      // Run cargo-e with the selected or received manifestPath and target
+        // // Normalize to POSIX path for --manifest-path argument
+        // const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
+        // const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
+        // console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+        
+        // const terminal = vscode.window.createTerminal({
+        //   name: targetName ? `${targetName}` : "Cargo Build",
+        //   cwd: selectedDir,
+        // });
+        // terminal.show();
+        
+        // const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
+        // console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+        // terminal.sendText(cargoCommand);
+}
+
