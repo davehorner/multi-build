@@ -495,25 +495,36 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
     let selectedFilePath = manifestPath ? path.resolve(workspaceFolder, ...manifestPath.split(/[\\\/]/)) : undefined;
     let targetName = target;
     if (!selectedFilePath) {
-      const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
-      console.debug(`${logTag} Found Cargo.toml files:`, cargoFiles.map(f => f.fsPath));
       let selectedFile: { label: string; description: string; filePath: string } | undefined = undefined;
-      if (cargoFiles.length > 0) {
-        selectedFile = await vscode.window.showQuickPick(
-          cargoFiles.map((file) => ({
-        label: path.basename(file.fsPath),
-        description: file.fsPath,
-        filePath: file.fsPath,
-          })),
-          {
-        placeHolder: "Select a Cargo.toml file",
-          },
-        );
-        if (!selectedFile) {
-          // User cancelled selection, silently continue to CMake/package.json handling
-        }
+
+      // If manifestPath and target are already defined, use those directly
+      if (manifestPath && target) {
+        selectedFile = {
+          label: path.basename(manifestPath),
+          description: manifestPath,
+          filePath: manifestPath,
+        };
+        // No need to prompt user, just use provided values
       } else {
-        // No Cargo.toml files found, silently continue to CMake/package.json handling
+        const cargoFiles = await vscode.workspace.findFiles("**/Cargo.toml");
+        console.debug(`${logTag} Found Cargo.toml files:`, cargoFiles.map(f => f.fsPath));
+        if (cargoFiles.length > 0) {
+          selectedFile = await vscode.window.showQuickPick(
+        cargoFiles.map((file) => ({
+          label: path.basename(file.fsPath),
+          description: file.fsPath,
+          filePath: file.fsPath,
+        })),
+        {
+          placeHolder: "Select a Cargo.toml file",
+        },
+          );
+          if (!selectedFile) {
+        // User cancelled selection, silently continue to CMake/package.json handling
+          }
+        } else {
+          // No Cargo.toml files found, silently continue to CMake/package.json handling
+        }
       }
       if (selectedFile) {
         selectedFilePath = selectedFile.filePath;
@@ -538,20 +549,20 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
           },
         });
             // Run cargo-e with the selected or received manifestPath and target
-    // Normalize to POSIX path for --manifest-path argument
-    const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
-    const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
-    console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
-    
-    const terminal = vscode.window.createTerminal({
-      name: targetName ? `${targetName}` : "Cargo Build",
-      cwd: selectedDir,
-    });
-    terminal.show();
-    
-    const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
-    console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
-    terminal.sendText(cargoCommand);
+        // Normalize to POSIX path for --manifest-path argument
+        const posixManifestPath = selectedFilePath.split(path.sep).join(path.posix.sep);
+        const selectedDir = path.dirname(path.resolve(workspaceFolder, selectedFilePath));
+        console.log(`${cargoLogTag} Preparing to run 'cargo-e' in ${selectedDir}`);
+        
+        const terminal = vscode.window.createTerminal({
+          name: targetName ? `${targetName}` : "Cargo Build",
+          cwd: selectedDir,
+        });
+        terminal.show();
+        
+        const cargoCommand = targetName ? `cargo-e --manifest-path "${posixManifestPath}" --target ${targetName}` : `cargo-e --manifest-path "${posixManifestPath}"`;
+        console.log(`${cargoLogTag} Executing command: ${cargoCommand}`);
+        terminal.sendText(cargoCommand);
       } else {
         vscode.window.showErrorMessage(`${extensionName}: No Cargo.toml selected, skipping Cargo build.`);
       }
