@@ -534,6 +534,34 @@ async function handleSyncData(data: { repo: string; remote: string; branch: stri
   // Check if CMakeLists.txt exists in the repo root
   const cmakeFiles = await vscode.workspace.findFiles("**/CMakeLists.txt");
   if (cmakeFiles.length > 0) {
+    // Filter out CMakeLists.txt files in 'target' directories
+    const filteredCmakeFiles = cmakeFiles.filter(f => !/[/\\]target[/\\]/.test(f.fsPath));
+    if (filteredCmakeFiles.length === 0) {
+      console.log(`${logTag} All CMakeLists.txt files are in 'target' directories, skipping CMake build.`);
+      return;
+    }
+    // If there are multiple, let the user pick which one to use
+    let cmakeFileToUse = filteredCmakeFiles[0];
+    if (filteredCmakeFiles.length > 1) {
+      const picked = await vscode.window.showQuickPick(
+      filteredCmakeFiles.map(f => ({
+        label: path.basename(f.fsPath),
+        description: f.fsPath,
+        file: f
+      })),
+      { placeHolder: "Select a CMakeLists.txt file to use for build" }
+      );
+      if (!picked) {
+      vscode.window.showInformationMessage(`${logTag} No CMakeLists.txt selected, skipping CMake build.`);
+      return;
+      }
+      cmakeFileToUse = picked.file;
+    }
+    // Optionally, set the workspace folder to the directory containing the selected CMakeLists.txt
+    const cmakeDir = path.dirname(cmakeFileToUse.fsPath);
+    console.log(`${logTag} Using CMakeLists.txt in: ${cmakeDir}`);
+    vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(cmakeDir), false);
+
     console.log(`${logTag} Found CMakeLists.txt files:`, cmakeFiles.map(f => f.fsPath));
     console.log(`${logTag} CMake configure`);
     await vscode.commands.executeCommand("cmake.configure");
