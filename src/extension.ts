@@ -110,29 +110,40 @@ export function activate(context: vscode.ExtensionContext) {
         }
         vscode.window.showInformationMessage(`Multi-Build v${version}: Pulling latest code in terminal...`);
 
+        // Clean up old VSIX files before packaging
+        const glob = require("glob");
+        const oldVsixFiles = glob.sync(path.join(workspacePath, "multi-build-*.vsix"));
+        for (const file of oldVsixFiles) {
+          try { fs.unlinkSync(file); } catch (e) { /* ignore */ }
+        }
+        vscode.window.showInformationMessage("Multi-Build: Deleted old VSIX files before packaging.");
+
         terminal.sendText("npm run package");
         vscode.window.showInformationMessage(`Multi-Build v${version}: Packaging extension in terminal...`);
         // Wait for the new .vsix file to be created/updated
         const waitForVsix = async () => {
+          const glob = require("glob");
           for (let i = 0; i < 30; ++i) { // up to ~15 seconds
-            if (fs.existsSync(vsixPath)) {
-              const mtime = fs.statSync(vsixPath).mtime.getTime();
+            const vsixFiles = glob.sync(path.join(workspacePath, `multi-build-*.vsix`));
+            const expectedVsix = vsixFiles.find((f: string) => path.basename(f) === vsixName);
+            if (expectedVsix && fs.existsSync(expectedVsix)) {
+              const mtime = fs.statSync(expectedVsix).mtime.getTime();
               if (mtime > prevMtime) {
-                return true;
+                return expectedVsix;
               }
             }
             await new Promise((resolve) => setTimeout(resolve, 3000));
           }
-          return false;
+          return undefined;
         };
-        const found = await waitForVsix();
-        if (!found) {
+        const foundVsix = await waitForVsix();
+        if (!foundVsix) {
           vscode.window.showErrorMessage(`Multi-Build: ${vsixName} not found or not updated after packaging. Make sure packaging succeeded.`);
           return;
         }
         vscode.window.showInformationMessage(`Multi-Build v${version}: Installing extension from VSIX...`);
         // Install the correct VSIX using VS Code's API
-        await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsixPath));
+        await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(foundVsix));
         await vscode.commands.executeCommand('workbench.action.reloadWindow');
         vscode.window.showInformationMessage(`Multi-Build: Pulled, packaged, and installed ${vsixName} (v${version})`);
       } catch (err) {
