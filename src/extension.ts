@@ -17,7 +17,6 @@ const reconnectCommand = `multiBuild.reconnect`;
 const syncCommand = `multiBuild.sync`;
 const showRoomIdCommand = "multiBuild.showRoomId";
 const updateAndInstallCommand = "multiBuild.updateAndInstall";
-const showRoomIdCommand = "multiBuild.showRoomId";
 const defaultBaseUrl = "wss://multi-build-server.symless.workers.dev";
 const keepAliveIntervalMillis = 10000; // 10 seconds
 
@@ -135,7 +134,7 @@ export function activate(context: vscode.ExtensionContext) {
         await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(foundVsix));
         // Broadcast a refresh command to all connected instances after successful upgrade
         vscode.commands.executeCommand('workbench.action.reloadWindow');
-        if (roomSocket) {
+        if (activeSocket) {
           sendMessage({ type: "refresh-all-windows" });
           vscode.window.showInformationMessage("Multi-Build: Refresh command sent to all connected instances.");
         } else {
