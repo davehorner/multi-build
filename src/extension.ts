@@ -465,7 +465,7 @@ function sendMessage({ type, data }: { type: string; data?: unknown }) {
   // Don't show or send keep-alive messages with data
   if (type === "keep-alive") {
     console.debug(`${logTag} Sending message: ${type}`, { data });
-    roomSocket.send(JSON.stringify({ type, data }));
+    activeSocket.send(JSON.stringify({ type, data }));
     return;
   }
   vscode.window.showInformationMessage(`Multi-Build: Sending message: ${type}${data ? ", data: " + JSON.stringify(data) : ""}`);
