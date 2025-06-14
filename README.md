@@ -1,5 +1,7 @@
 # Multi-Build
 
+[![CI](https://github.com/symless/multi-build/actions/workflows/ci.yml/badge.svg)](https://github.com/symless/multi-build/actions/workflows/ci.yml)
+
 VS Code extension to switch all machines to the same branch, configure, and build.
 
 This extension is easier to use if you [synchronize](https://code.visualstudio.com/docs/configure/settings-sync)
@@ -10,6 +12,14 @@ your `settings.json` file across all of your computers.
 > Please open a feature request issue if you want support for other tools, custom commands, etc.
 
 ![Leeloo Dallas Multi-Build](https://github.com/user-attachments/assets/ae110ac8-959e-4a75-872d-be80bc079b6a)
+
+## Contributing
+
+Thanks for your interest in contributing!
+
+Please see the [Contributing](https://github.com/symless/multi-build/wiki/Contributing) article on our wiki.
+
+Happy coding.
 
 ## Download & Install
 

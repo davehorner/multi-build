@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.6] - 2025-06-12
 
-- Auto-detect cargo and cmake projects on sync, add cargo-e target selection
+- Add command to show/edit room ID
 
 ## [0.0.5] - 2025-05-14
 
